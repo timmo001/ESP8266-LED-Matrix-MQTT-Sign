@@ -33,4 +33,3 @@ const int timezone = 1; // TZ: Europe/London
 
 unsigned long delayTime = 10000;
 int scrollDelay = 40;
-
