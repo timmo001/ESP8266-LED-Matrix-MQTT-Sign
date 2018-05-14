@@ -13,10 +13,9 @@ ESP8266 LED Matrix MQTT Sign
 - Build the project (Ctrl+Alt+B) and check for any errors
 
   > If the build produces an error referencing dependencies, You will need to manually install these libraries:
-    - Adafruit NeoPixel
-    - ArduinoJson
-    - PubSubClient
-    - WS2812FX
+    - [ArduinoJson](https://platformio.org/lib/show/64/ArduinoJson)
+    - [PubSubClient](https://platformio.org/lib/show/89/PubSubClient)
+    - [Time](https://platformio.org/lib/show/44/Time)
 - Upload to your board of choice (Ctrl+Alt+U). This project was created specifically for the `NodeMCU` but can be configured to work with another WiFi board with some tinkering.
 
 ## Example Home Assistant Configuration
