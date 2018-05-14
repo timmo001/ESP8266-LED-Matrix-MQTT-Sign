@@ -459,25 +459,25 @@ void updateTime() {
   sendCmdAll(CMD_INTENSITY, (hour(timeNow) >= 7 && hour(timeNow) <= 16) ? 1 : 0);
 }
 
-void showTimeDate() {
-  updateTime();
-  Serial.println("showTimeDate()");
-  sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
-  // sprintf(txt2, "%d%s%s", day(timeNow), (day(timeNow) > 19) ? "" : "&", monthNames[month(timeNow) - 1]);
-  // sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
-  sprintf(txt2, "%02d", day(timeNow));
-  Serial.println(txt);
-  Serial.println(txt2);
-  int wd1 = stringWidth(txt, dig5x8rn, ' ');
-  int wd2 = stringWidth(txt2, small3x7, ' ');
-  int wd = NUM_MAX * 8 - wd1 - wd2 - 1;
-  printStringWithShift("  ", scrollDelay, font, ' ');
-  printStringWithShift(txt, scrollDelay, dig5x8rn, ' '); // time
-  while (wd-- > 0)
-    printCharWithShift('_', scrollDelay, font, ' ');
-  printStringWithShift(txt2, scrollDelay, small3x7, ' '); // date
-  delay(delayTime);
-}
+// void showTimeDate() {
+//   updateTime();
+//   Serial.println("showTimeDate()");
+//   sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
+//   // sprintf(txt2, "%d%s%s", day(timeNow), (day(timeNow) > 19) ? "" : "&", monthNames[month(timeNow) - 1]);
+//   // sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
+//   sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
+//   Serial.println(txt);
+//   Serial.println(txt2);
+//   int wd1 = stringWidth(txt, dig5x8rn, ' ');
+//   int wd2 = stringWidth(txt2, small3x7, ' ');
+//   int wd = NUM_MAX * 8 - wd1 - wd2 - 1;
+//   printStringWithShift("  ", scrollDelay, font, ' ');
+//   printStringWithShift(txt, scrollDelay, dig5x8rn, ' '); // time
+//   while (wd-- > 0)
+//     printCharWithShift('_', scrollDelay, font, ' ');
+//   printStringWithShift(txt2, scrollDelay, small3x7, ' '); // date
+//   delay(delayTime);
+// }
 
 // **************************************** EXTRAS ****************************************
 bool updateExtras() {
@@ -570,36 +570,36 @@ void showExtras(int pos = -1) {
   }
 }
 
-void displayScrollingExtras() {
-  Serial.println("");
-  Serial.print("Count = ");
-  Serial.println(cnt);
-  // Serial.println("");
+// void displayScrollingExtras() {
+//   Serial.println("");
+//   Serial.print("Count = ");
+//   Serial.println(cnt);
+//   // Serial.println("");
 
-  switch (cnt) {
-  case 0:
-    showTimeDate();
-    delay(delayTime);
-    break;
-  default:
-    updateExtras();
-    showExtras(cnt);
-    break;
-  }
+//   switch (cnt) {
+//   case 0:
+//     showTimeDate();
+//     delay(delayTime);
+//     break;
+//   default:
+//     updateExtras();
+//     showExtras(cnt);
+//     break;
+//   }
 
-  cnt++;
-  if (cnt > LAST_DISP)
-    cnt = 0;
-  // delTime = millis() - startTime;
-  // if (delTime < 20000) delay(20000 - delTime);
-  // delay(delayTime);
-}
+//   cnt++;
+//   if (cnt > LAST_DISP)
+//     cnt = 0;
+//   // delTime = millis() - startTime;
+//   // if (delTime < 20000) delay(20000 - delTime);
+//   // delay(delayTime);
+// }
 
 void showAll() {
   Serial.println("showAll()");
   sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
-  sprintf(txt2, "%02d", day(timeNow));
-  // sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
+  // sprintf(txt2, "%02d", day(timeNow));
+  sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
   // sprintf(txt2, "%02d", day(timeNow));
   Serial.println(txt);
   Serial.println(txt2);
@@ -697,11 +697,11 @@ void loop() {
     ArduinoOTA.handle();
 
     if (stateOn) {
-      if (NUM_MAX < 8) {
-        displayScrollingExtras();
-      } else {
-        displayAll();
-      }
+      // if (NUM_MAX < 8) {
+      //   displayScrollingExtras();
+      // } else {
+      displayAll();
+      // }
     } else {
       printStringWithShift("                                                                ", scrollDelay, font, ' ');
       delay(1000);
