@@ -1,6 +1,0 @@
-[submodule "lib/MD_Parola"]
-	path = lib/MD_Parola
-	url = https://github.com/MajicDesigns/MD_Parola.git
-[submodule "lib/MD_MAX72XX"]
-	path = lib/MD_MAX72XX
-	url = https://github.com/MajicDesigns/MD_MAX72XX.git
