@@ -17,11 +17,12 @@ using namespace std;
 
 // **************************************** GLOBALS ****************************************
 // #define LAST_DISP 2
+const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
+#define MQTT_MAX_PACKET_SIZE 512
 
+const int del = 3000, value = 0;
 const char *monthNames[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"},
            *on_cmd = "ON", *off_cmd = "OFF";
-const int del = 3000, BUFFER_SIZE = 300, value = 0;
-
 char msg[50], txt[30], txt2[20];
 char *hass_states = "";
 char *extras[3];
@@ -419,9 +420,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
   }
   message[length] = '\0';
 
-  if (!processJson(message)) {
+  if (!processJson(message))
     return;
-  }
 
   sendState(topic);
 }
