@@ -26,4 +26,14 @@ ESP8266 LED Matrix MQTT Sign
 ## Sample MQTT Payload
 
 ```json
+{
+  "state": "ON",
+  "speed": 50,
+  "states": [
+    {
+      "state": "sensor.dht22_01_temperature",
+      "measurement": "C"
+    }
+  ]
+}
 ```
