@@ -16,7 +16,7 @@ using namespace std;
 #include "fonts.h"
 
 // **************************************** GLOBALS ****************************************
-#define LAST_DISP 2
+// #define LAST_DISP 2
 
 const char *monthNames[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"},
            *on_cmd = "ON", *off_cmd = "OFF";
@@ -350,66 +350,61 @@ String findSub(String token, String subToken) {
   return buf.substring(strS2, strE);
 }
 
-bool processJson(char *topic, char *message) {
+bool processJson(char *message) {
+  Serial.print("Message: ");
+  Serial.println(message);
+
   StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
 
-  if (topic == mqtt_set_topic) {
-    JsonObject &root = jsonBuffer.parseObject(message);
+  JsonObject &root = jsonBuffer.parseObject(message);
 
-    if (!root.success()) {
-      Serial.println("parseObject() failed");
-      return false;
-    }
-
-    if (root.containsKey("state")) {
-      if (strcmp(root["state"], on_cmd) == 0) {
-        stateOn = true;
-      } else if (strcmp(root["state"], off_cmd) == 0) {
-        stateOn = false;
-      }
-    }
-
-    if (root.containsKey("speed")) {
-      scrollDelay = root["speed"];
-    }
-  } else if (topic == mqtt_extras_set_topic) {
-    JsonArray &states = jsonBuffer.parseArray(hass_states);
-
-    if (!states.success()) {
-      Serial.println("parseObject() failed");
-      return false;
-    }
-
-    const string statesStr;
-    states.printTo(hass_states, BUFFER_SIZE);
-
-    Serial.println(hass_states);
+  if (!root.success()) {
+    Serial.println("parseObject() failed");
+    return false;
   }
+
+  if (root.containsKey("state")) {
+    if (strcmp(root["state"], on_cmd) == 0) {
+      stateOn = true;
+    } else if (strcmp(root["state"], off_cmd) == 0) {
+      stateOn = false;
+    }
+  }
+
+  if (root.containsKey("speed")) {
+    scrollDelay = root["speed"];
+  }
+
+  JsonArray &states = root["states"];
+
+  if (!states.success()) {
+    Serial.println("parseArray() failed");
+  }
+
+  hass_states[root.measureLength() + 1];
+  states.printTo(hass_states, sizeof(hass_states));
+
   return true;
 }
 
 void sendState(char *topic) {
   StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
 
-  if (topic == mqtt_set_topic) {
-    JsonObject &root = jsonBuffer.createObject();
+  JsonObject &root = jsonBuffer.createObject();
 
-    root["state"] = (stateOn) ? on_cmd : off_cmd;
+  root["state"] = (stateOn) ? on_cmd : off_cmd;
 
-    char buffer[root.measureLength() + 1];
-    root.printTo(buffer, sizeof(buffer));
-
-    // Serial.println(buffer);
-    client.publish(mqtt_state_topic, buffer, true);
-  } else if (mqtt_extras_set_topic) {
+  if (strcmp(hass_states, "") != 0) {
     JsonArray &states = jsonBuffer.parseArray(hass_states);
-
-    char buffer[states.measureLength() + 1];
-    states.printTo(buffer, sizeof(buffer));
-
-    // Serial.println(buffer);
-    client.publish(mqtt_state_topic, buffer, true);
+    root["states"] = states;
   }
+
+  char buffer[root.measureLength() + 1];
+  root.printTo(buffer, sizeof(buffer));
+
+  Serial.print("Publish: ");
+  Serial.println(buffer);
+  client.publish(mqtt_state_topic, buffer, true);
 }
 
 // **************************************** MQTT CALLBACK ****************************************
@@ -423,9 +418,8 @@ void callback(char *topic, byte *payload, unsigned int length) {
     message[i] = (char)payload[i];
   }
   message[length] = '\0';
-  Serial.println(message);
 
-  if (!processJson(topic, message)) {
+  if (!processJson(message)) {
     return;
   }
 
@@ -440,7 +434,8 @@ void reconnect() {
     if (client.connect(mqtt_name, mqtt_user, mqtt_password)) {
       Serial.println("connected");
       client.subscribe(mqtt_set_topic);
-      client.subscribe(mqtt_extras_set_topic);
+      Serial.print("Subscribed to: ");
+      Serial.println(mqtt_set_topic);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -483,16 +478,12 @@ void updateTime() {
 bool updateExtras() {
   Serial.println("updateExtras()");
 
-  if (hass_states == "") {
-    return false;
-  }
-
-  if (!wifiClientSecure.connect(hass_host.c_str(), hass_port)) {
-    Serial.println("connection failed");
-    return false;
-  }
-
   StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+
+  if (strcmp(hass_states, "") == 0) {
+    Serial.println("States blank. Returning");
+    return false;
+  }
 
   JsonArray &states = jsonBuffer.parseArray(hass_states);
 
@@ -500,11 +491,28 @@ bool updateExtras() {
 
   extras[arrayLength] = {};
 
-  for (int i = 0; i <= arrayLength; i++) {
+  if (!wifiClientSecure.connect(hass_host.c_str(), hass_port)) {
+    Serial.println("connection failed");
+    return false;
+  }
+
+  for (int i = 0; i < arrayLength; i++) {
     JsonObject &statesObject = states[i];
     const char *state = statesObject["state"];
+
+    Serial.print("State: ");
+    Serial.println(state);
+
     string stateStr = state;
+
+    Serial.print("State String: ");
+    Serial.println(stateStr.c_str());
+
     string requestCmd = "GET /api/states/" + stateStr + "?api_password=" + hass_api_password + " HTTP/1.1";
+
+    Serial.print("Request: ");
+    Serial.println(requestCmd.c_str());
+
     wifiClientSecure.println(requestCmd.c_str());
     string hostCmd = "Host: " + hass_host;
     wifiClientSecure.println(hostCmd.c_str());
@@ -618,10 +626,10 @@ void displayAll() {
   if (minute(timeNow) != lastMin) {
     Serial.println("");
     lastMin = minute(timeNow);
-    updateExtras();
     showAll();
   }
-  delay(1000);
+  if (second(timeNow) == 30)
+    updateExtras();
 }
 
 // **************************************** SETUP ****************************************
@@ -704,7 +712,7 @@ void loop() {
       // }
     } else {
       printStringWithShift("                                                                ", scrollDelay, font, ' ');
-      delay(1000);
     }
   }
+  delay(1000);
 }
