@@ -13,9 +13,9 @@ using namespace std;
 const char *ssid = "ssid";                // SSID of local network
 const char *password = "pass";            // Password on network
 const char *ota_password = "pass";        // OTA Password
-const char *ota_hostname = "max7219_001"; // OTA Hostname
+const char *ota_hostname = "matrix001"; // OTA Hostname
 
-const char *mqtt_name = "max7219_001";
+const char *mqtt_name = "matrix001";
 const char *mqtt_server = "domain_or_ip";
 const long mqtt_port = 1883;
 const char *mqtt_user = "user";

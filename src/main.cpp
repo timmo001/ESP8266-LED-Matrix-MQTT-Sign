@@ -376,14 +376,16 @@ bool processJson(char *message) {
     scrollDelay = root["speed"];
   }
 
-  JsonArray &states = root["states"];
+  if (root.containsKey("states")) {
+    JsonArray &states = root["states"];
 
-  if (!states.success()) {
-    Serial.println("parseArray() failed");
+    if (!states.success()) {
+      Serial.println("parseArray() failed");
+    }
+
+    hass_states[root.measureLength() + 1];
+    states.printTo(hass_states, sizeof(hass_states));
   }
-
-  hass_states[root.measureLength() + 1];
-  states.printTo(hass_states, sizeof(hass_states));
 
   return true;
 }
@@ -635,7 +637,7 @@ void displayAll() {
 // **************************************** SETUP ****************************************
 void setup() {
   buf.reserve(500);
-  Serial.begin(115200); // For debugging output
+  Serial.begin(9600); // For debugging output
   Serial.println("Start.");
   Serial.println("");
 
