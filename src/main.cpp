@@ -24,8 +24,8 @@ const int del = 3000, value = 0;
 const char *monthNames[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"},
            *on_cmd = "ON", *off_cmd = "OFF";
 char msg[50], txt[30], txt2[20];
-char *hass_states = "";
-char *extras[3];
+String hass_states = "";
+char *extras[10];
 String buf = "";
 long lastMsg = 0, lastMin = 100;
 int cnt = 0;
@@ -383,8 +383,10 @@ bool processJson(char *message) {
       Serial.println("parseArray() failed");
     }
 
-    hass_states[root.measureLength() + 1];
-    states.printTo(hass_states, sizeof(hass_states));
+    char buffer[states.measureLength() + 1];
+    states.printTo(buffer, sizeof(buffer));
+
+    hass_states = buffer;
   }
 
   return true;
@@ -397,7 +399,9 @@ void sendState(char *topic) {
 
   root["state"] = (stateOn) ? on_cmd : off_cmd;
 
-  if (strcmp(hass_states, "") != 0) {
+  if (hass_states != "") {
+    Serial.print("hass_states: ");
+    Serial.println(hass_states);
     JsonArray &states = jsonBuffer.parseArray(hass_states);
     root["states"] = states;
   }
@@ -414,7 +418,7 @@ void sendState(char *topic) {
 void callback(char *topic, byte *payload, unsigned int length) {
   Serial.print("Message arrived [");
   Serial.print(topic);
-  Serial.print("] ");
+  Serial.println("] ");
 
   char message[length + 1];
   for (unsigned int i = 0; i < length; i++) {
@@ -480,44 +484,49 @@ void updateTime() {
 bool updateExtras() {
   Serial.println("updateExtras()");
 
-  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
-
-  if (strcmp(hass_states, "") == 0) {
+  if (hass_states == "") {
     Serial.println("States blank. Returning");
     return false;
   }
 
+  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+
   JsonArray &states = jsonBuffer.parseArray(hass_states);
 
-  int arrayLength = sizeof(states);
+  int arrayLength = states.size();
 
-  extras[arrayLength] = {};
+  extras[arrayLength];
 
-  if (!wifiClientSecure.connect(hass_host.c_str(), hass_port)) {
+  if (!wifiClientSecure.connect(hass_host, hass_port)) {
     Serial.println("connection failed");
     return false;
   }
 
-  for (int i = 0; i < arrayLength; i++) {
+  Serial.print("States Length: ");
+  Serial.println(arrayLength);
+
+  for (int i = 0; i <= arrayLength - 1; i++) {
     JsonObject &statesObject = states[i];
     const char *state = statesObject["state"];
 
     Serial.print("State: ");
     Serial.println(state);
 
-    string stateStr = state;
+    // String stateStr = state;
 
-    Serial.print("State String: ");
-    Serial.println(stateStr.c_str());
+    // String hostCmd = "Host: " + hass_host;
+    // String requestCmd = "GET /api/states/" + stateStr + "?api_password=" + hass_api_password + " HTTP/1.1";
+    char hostCmd[50], requestCmd[200];
+    sprintf(hostCmd, "Host: %s", hass_host);
+    sprintf(requestCmd, "GET /api/states/%s?api_password=%s HTTP/1.1", state, hass_api_password);
 
-    string requestCmd = "GET /api/states/" + stateStr + "?api_password=" + hass_api_password + " HTTP/1.1";
-
+    Serial.println(hostCmd);
     Serial.print("Request: ");
-    Serial.println(requestCmd.c_str());
+    Serial.println(requestCmd);
 
-    wifiClientSecure.println(requestCmd.c_str());
-    string hostCmd = "Host: " + hass_host;
-    wifiClientSecure.println(hostCmd.c_str());
+    wifiClientSecure.println(requestCmd);
+    wifiClientSecure.println(hostCmd);
+    wifiClientSecure.println("Accept: application/json");
     wifiClientSecure.println("Connection: close");
     wifiClientSecure.println();
 
@@ -525,28 +534,44 @@ bool updateExtras() {
       String line = wifiClientSecure.readStringUntil('\n');
       if (line == "\r") {
         Serial.println("headers received");
+        Serial.println(line);
         break;
       }
     }
     while (wifiClientSecure.available()) {
-      String jsonString = wifiClientSecure.readString();
-      Serial.println(jsonString);
+      StaticJsonBuffer<BUFFER_SIZE> buffer;
 
-      JsonObject &jsonRoot = jsonBuffer.parseObject(jsonString);
-      if (!jsonRoot.success()) {
+      Serial.println("Reading string");
+      String payloadStr = wifiClientSecure.readString();
+      const char *payload = payloadStr.c_str();
+      char *payloadChar = "";
+      strcpy(payloadChar, payload);
+      Serial.println(payloadChar);
+
+      JsonObject &root = buffer.parseObject(payloadChar);
+      if (!root.success()) {
         Serial.println("Parsing root failed");
         return false;
       }
+      Serial.println("Parsed root");
 
-      // Set extra to state
-      strcpy(extras[i], jsonRoot["state"]);
+      // // Set extra to state
+      // const char *state = root["state"];
+      // Serial.print("State: ");
+      // Serial.println(state);
+
+      // strcpy(extras[i], state);
+      sprintf(extras[i], "%s", root["state"]);
+
+      Serial.print("Extra: ");
+      Serial.println(extras[i]);
 
       // Add measurement to extra
       if (statesObject.containsKey("measurement")) {
         strstr(extras[i], statesObject["measurement"]);
         Serial.println(extras[i]);
       } else {
-        JsonObject &jsonAttributes = jsonRoot["attributes"];
+        JsonObject &jsonAttributes = root["attributes"];
         if (jsonAttributes.success()) {
           strstr(extras[i], jsonAttributes["unit_of_measurement"]);
           Serial.println(extras[i]);
@@ -554,13 +579,6 @@ bool updateExtras() {
           Serial.println("Parsing attributes failed");
         }
       }
-
-      // const char *state = stateStr.c_str();
-      // const char* measurement = measurementStr.c_str();
-
-      // sprintf(temp, "%s%s", state, "C"); // "°C"
-      // sprintf(temp, "%s", state);
-      // Serial.println(temp);
     }
   }
   wifiClientSecure.stop();
@@ -630,7 +648,7 @@ void displayAll() {
     lastMin = minute(timeNow);
     showAll();
   }
-  if (second(timeNow) == 30)
+  if (second(timeNow) == 10)
     updateExtras();
 }
 
@@ -689,11 +707,12 @@ void setup() {
 
   Serial.println("");
   configTime(timezone * 3600, 0, "pool.ntp.org", "time.nist.gov");
-  Serial.println("\nWaiting for time");
+  Serial.print("\nWaiting for time");
   while (!time(nullptr)) {
     Serial.print(".");
     delay(1000);
   }
+  Serial.println("");
 }
 
 // **************************************** MAIN LOOP ****************************************
