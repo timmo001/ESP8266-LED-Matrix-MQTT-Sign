@@ -17,7 +17,7 @@ using namespace std;
 
 // **************************************** GLOBALS ****************************************
 // #define LAST_DISP 2
-const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
+// const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
 #define MQTT_MAX_PACKET_SIZE 512
 
 const int del = 3000, value = 0;
@@ -25,7 +25,7 @@ const char *monthNames[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AU
            *on_cmd = "ON", *off_cmd = "OFF";
 char msg[50], txt[30], txt2[20];
 String hass_states = "";
-char *extras[10];
+vector<string> extras;
 String buf = "";
 long lastMsg = 0, lastMin = 100;
 int cnt = 0;
@@ -351,11 +351,163 @@ String findSub(String token, String subToken) {
   return buf.substring(strS2, strE);
 }
 
+// **************************************** TIME ****************************************
+void updateTime() {
+  // Serial.println("updateTime()");
+  timeNow = time(nullptr);
+  // Serial.print(ctime(&timeNow));
+  sendCmdAll(CMD_INTENSITY, (hour(timeNow) >= 7 && hour(timeNow) <= 16) ? 1 : 0);
+}
+
+// void showTimeDate() {
+//   updateTime();
+//   Serial.println("showTimeDate()");
+//   sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
+//   // sprintf(txt2, "%d%s%s", day(timeNow), (day(timeNow) > 19) ? "" : "&", monthNames[month(timeNow) - 1]);
+//   // sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
+//   sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
+//   Serial.println(txt);
+//   Serial.println(txt2);
+//   int wd1 = stringWidth(txt, dig5x8rn, ' ');
+//   int wd2 = stringWidth(txt2, small3x7, ' ');
+//   int wd = NUM_MAX * 8 - wd1 - wd2 - 1;
+//   printStringWithShift("  ", scrollDelay, font, ' ');
+//   printStringWithShift(txt, scrollDelay, dig5x8rn, ' '); // time
+//   while (wd-- > 0)
+//     printCharWithShift('_', scrollDelay, font, ' ');
+//   printStringWithShift(txt2, scrollDelay, small3x7, ' '); // date
+//   delay(delayTime);
+// }
+
+// **************************************** EXTRAS ****************************************
+bool updateExtras() {
+  Serial.println("updateExtras()");
+
+  if (hass_states == "") {
+    Serial.println("States blank. Returning");
+    return false;
+  }
+
+  const size_t bufferSize = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(5) + 240;
+  DynamicJsonBuffer jsonBuffer(bufferSize);
+
+  JsonArray &states = jsonBuffer.parseArray(hass_states);
+
+  int arrayLength = states.size();
+
+  if (!wifiClientSecure.connect(hass_host, hass_port)) {
+    Serial.println("connection failed");
+    return false;
+  }
+
+  Serial.print("States Length: ");
+  Serial.println(arrayLength);
+
+  extras.clear();
+
+  for (int i = 0; i <= arrayLength - 1; i++) {
+    JsonObject &statesObject = states[i];
+    const char *state = statesObject["state"];
+
+    Serial.print("State: ");
+    Serial.println(state);
+
+    char hostCmd[50], requestCmd[200];
+    sprintf(hostCmd, "Host: %s", hass_host);
+    sprintf(requestCmd, "GET /api/states/%s?api_password=%s HTTP/1.1", state, hass_api_password);
+
+    Serial.println(hostCmd);
+    Serial.print("Request: ");
+    Serial.println(requestCmd);
+
+    wifiClientSecure.println(requestCmd);
+    wifiClientSecure.println(hostCmd);
+    // wifiClientSecure.println("Accept: application/json");
+    wifiClientSecure.println("Connection: close");
+    wifiClientSecure.println();
+
+    while (wifiClientSecure.connected()) {
+      String line = wifiClientSecure.readStringUntil('\n');
+      if (line == "\r") {
+        Serial.println("headers received");
+        Serial.println(line);
+        break;
+      }
+    }
+
+    while (wifiClientSecure.available()) {
+      Serial.println("Reading string");
+      String payloadStr = wifiClientSecure.readStringUntil('\n');
+      Serial.println(payloadStr);
+
+      const size_t bufferSize = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(5) + 240;
+      DynamicJsonBuffer jsonBuffer(bufferSize);
+
+      JsonObject &root = jsonBuffer.parseObject(payloadStr);
+      if (!root.success()) {
+        Serial.println("Parsing root failed");
+        return false;
+      }
+      Serial.println("Parsed root");
+
+      char rootChar[root.measureLength() + 1];
+      root.printTo(rootChar, sizeof(rootChar));
+      Serial.print("root: ");
+      Serial.println(rootChar);
+
+      const char *state = root["state"];
+      string extra = state;
+
+      Serial.print("Extra: ");
+      Serial.println(extra.c_str());
+
+      // Add measurement to extra
+      if (statesObject.containsKey("measurement")) {
+        const char *measurement = statesObject["measurement"];
+        extra.append(measurement);
+      } else {
+        JsonObject &jsonAttributes = root["attributes"];
+        if (jsonAttributes.success()) {
+          const char *measurement = jsonAttributes["unit_of_measurement"];
+          extra.append(measurement);
+        } else {
+          Serial.println("Parsing attributes failed");
+        }
+      }
+
+      Serial.print("Extra: ");
+      Serial.println(extra.c_str());
+
+      extras.push_back(extra);
+    }
+  }
+  // wifiClientSecure.stop();
+  return true;
+}
+
+void showExtras(int pos = -1) {
+  Serial.println("showExtras()");
+
+  if (extras.size() < 1)
+    return;
+
+  if (pos > -1) {
+
+  } else {
+    for (unsigned int i = 0; i <= extras.size() - 1; i++) {
+      sprintf(txt, " %s ", extras[i].c_str());
+      Serial.println(txt);
+      printStringWithShift(txt, scrollDelay, font, ' ');
+    }
+  }
+}
+
 bool processJson(char *message) {
   Serial.print("Message: ");
   Serial.println(message);
 
-  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+  const size_t bufferSize = JSON_ARRAY_SIZE(1) + 2 * JSON_OBJECT_SIZE(2) + 80;
+  DynamicJsonBuffer jsonBuffer(bufferSize);
 
   JsonObject &root = jsonBuffer.parseObject(message);
 
@@ -393,7 +545,8 @@ bool processJson(char *message) {
 }
 
 void sendState(char *topic) {
-  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
+  const size_t bufferSize = JSON_ARRAY_SIZE(1) + 2 * JSON_OBJECT_SIZE(2) + 80;
+  DynamicJsonBuffer jsonBuffer(bufferSize);
 
   JsonObject &root = jsonBuffer.createObject();
 
@@ -412,6 +565,8 @@ void sendState(char *topic) {
   Serial.print("Publish: ");
   Serial.println(buffer);
   client.publish(mqtt_state_topic, buffer, true);
+
+  updateExtras();
 }
 
 // **************************************** MQTT CALLBACK ****************************************
@@ -452,152 +607,6 @@ void reconnect() {
   }
 }
 
-// **************************************** TIME ****************************************
-void updateTime() {
-  // Serial.println("updateTime()");
-  timeNow = time(nullptr);
-  // Serial.print(ctime(&timeNow));
-  sendCmdAll(CMD_INTENSITY, (hour(timeNow) >= 7 && hour(timeNow) <= 16) ? 1 : 0);
-}
-
-// void showTimeDate() {
-//   updateTime();
-//   Serial.println("showTimeDate()");
-//   sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
-//   // sprintf(txt2, "%d%s%s", day(timeNow), (day(timeNow) > 19) ? "" : "&", monthNames[month(timeNow) - 1]);
-//   // sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
-//   sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
-//   Serial.println(txt);
-//   Serial.println(txt2);
-//   int wd1 = stringWidth(txt, dig5x8rn, ' ');
-//   int wd2 = stringWidth(txt2, small3x7, ' ');
-//   int wd = NUM_MAX * 8 - wd1 - wd2 - 1;
-//   printStringWithShift("  ", scrollDelay, font, ' ');
-//   printStringWithShift(txt, scrollDelay, dig5x8rn, ' '); // time
-//   while (wd-- > 0)
-//     printCharWithShift('_', scrollDelay, font, ' ');
-//   printStringWithShift(txt2, scrollDelay, small3x7, ' '); // date
-//   delay(delayTime);
-// }
-
-// **************************************** EXTRAS ****************************************
-bool updateExtras() {
-  Serial.println("updateExtras()");
-
-  if (hass_states == "") {
-    Serial.println("States blank. Returning");
-    return false;
-  }
-
-  StaticJsonBuffer<BUFFER_SIZE> jsonBuffer;
-
-  JsonArray &states = jsonBuffer.parseArray(hass_states);
-
-  int arrayLength = states.size();
-
-  extras[arrayLength];
-
-  if (!wifiClientSecure.connect(hass_host, hass_port)) {
-    Serial.println("connection failed");
-    return false;
-  }
-
-  Serial.print("States Length: ");
-  Serial.println(arrayLength);
-
-  for (int i = 0; i <= arrayLength - 1; i++) {
-    JsonObject &statesObject = states[i];
-    const char *state = statesObject["state"];
-
-    Serial.print("State: ");
-    Serial.println(state);
-
-    // String stateStr = state;
-
-    // String hostCmd = "Host: " + hass_host;
-    // String requestCmd = "GET /api/states/" + stateStr + "?api_password=" + hass_api_password + " HTTP/1.1";
-    char hostCmd[50], requestCmd[200];
-    sprintf(hostCmd, "Host: %s", hass_host);
-    sprintf(requestCmd, "GET /api/states/%s?api_password=%s HTTP/1.1", state, hass_api_password);
-
-    Serial.println(hostCmd);
-    Serial.print("Request: ");
-    Serial.println(requestCmd);
-
-    wifiClientSecure.println(requestCmd);
-    wifiClientSecure.println(hostCmd);
-    wifiClientSecure.println("Accept: application/json");
-    wifiClientSecure.println("Connection: close");
-    wifiClientSecure.println();
-
-    while (wifiClientSecure.connected()) {
-      String line = wifiClientSecure.readStringUntil('\n');
-      if (line == "\r") {
-        Serial.println("headers received");
-        Serial.println(line);
-        break;
-      }
-    }
-    while (wifiClientSecure.available()) {
-      StaticJsonBuffer<BUFFER_SIZE> buffer;
-
-      Serial.println("Reading string");
-      String payloadStr = wifiClientSecure.readString();
-      const char *payload = payloadStr.c_str();
-      char *payloadChar = "";
-      strcpy(payloadChar, payload);
-      Serial.println(payloadChar);
-
-      JsonObject &root = buffer.parseObject(payloadChar);
-      if (!root.success()) {
-        Serial.println("Parsing root failed");
-        return false;
-      }
-      Serial.println("Parsed root");
-
-      // // Set extra to state
-      // const char *state = root["state"];
-      // Serial.print("State: ");
-      // Serial.println(state);
-
-      // strcpy(extras[i], state);
-      sprintf(extras[i], "%s", root["state"]);
-
-      Serial.print("Extra: ");
-      Serial.println(extras[i]);
-
-      // Add measurement to extra
-      if (statesObject.containsKey("measurement")) {
-        strstr(extras[i], statesObject["measurement"]);
-        Serial.println(extras[i]);
-      } else {
-        JsonObject &jsonAttributes = root["attributes"];
-        if (jsonAttributes.success()) {
-          strstr(extras[i], jsonAttributes["unit_of_measurement"]);
-          Serial.println(extras[i]);
-        } else {
-          Serial.println("Parsing attributes failed");
-        }
-      }
-    }
-  }
-  wifiClientSecure.stop();
-  return true;
-}
-
-void showExtras(int pos = -1) {
-  Serial.println("showExtras()");
-  if (pos > -1) {
-
-  } else {
-    for (unsigned int i = 0; i <= sizeof(extras); i++) {
-      sprintf(txt, " %s ", extras[i]);
-      Serial.println(txt);
-      printStringWithShift(txt, scrollDelay, small3x7, ' ');
-    }
-  }
-}
-
 // void displayScrollingExtras() {
 //   Serial.println("");
 //   Serial.print("Count = ");
@@ -625,6 +634,9 @@ void showExtras(int pos = -1) {
 
 void showAll() {
   Serial.println("showAll()");
+
+  showExtras();
+
   sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
   // sprintf(txt2, "%02d", day(timeNow));
   sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
