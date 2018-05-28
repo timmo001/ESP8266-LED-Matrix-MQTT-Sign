@@ -23,6 +23,36 @@ ESP8266 LED Matrix MQTT Sign
 ## Example Home Assistant Configuration
 
 ```yaml
+switch:
+  - platform: mqtt
+    name: "Matrix Clock"
+    command_topic: "switch/matrix001/set"
+    state_topic: "switch/matrix001"
+    payload_on: '{ "state": "ON" }'
+    payload_off: '{ "state": "OFF" }'
+    qos: 1
+
+input_number:
+  matrix_clock_speed:
+    name: 'Matrix Clock Scroll Speed'
+    mode: slider
+    initial: 40
+    min: 10
+    max: 100
+    step: 10
+
+automation:
+  - action:
+      - alias: Set Matrix Clock Speed
+        service: mqtt.publish
+        data_template:
+          topic: display/matrix001/set
+          payload: '{"speed":{{ trigger.to_state.state | int }}}'
+    alias: Matrix Clock Speed
+    trigger:
+      - platform: state
+        entity_id: input_number.matrix_clock_speed
+
 ```
 
 ## Sample MQTT Payload
