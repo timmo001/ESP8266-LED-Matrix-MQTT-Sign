@@ -297,7 +297,6 @@ void printValueWithShift(long val, int shiftDelay, int sign) {
   wd--;
   int wdL = (NUM_MAX * 8 - wd) / 2;
   int wdR = NUM_MAX * 8 - wdL - wd;
-  //Serial.println(wd); Serial.println(wdL); Serial.println(wdR);
   s = str.c_str();
   while (wdL > 0) {
     printCharWithShift(' ', shiftDelay, digits, ' ');
@@ -455,21 +454,25 @@ bool updateExtras() {
   return true;
 }
 
+void showExtra(int pos) {
+  sprintf(txt, " %s", extras[i].c_str());
+  Serial.println(txt);
+  printStringWithShift(txt, scrollDelay, font, ' ');
+}
+
 void showExtras(int pos = -1) {
   Serial.println("showExtras()");
 
-  if (extras.size() < 1)
+  if (extras.size() < 1) {
+    printStringWithShift("  ", scrollDelay, font, ' ');
     return;
-
-  if (pos > -1) {
-
-  } else {
-    for (unsigned int i = 0; i <= extras.size() - 1; i++) {
-      sprintf(txt, " %s ", extras[i].c_str());
-      Serial.println(txt);
-      printStringWithShift(txt, scrollDelay, font, ' ');
-    }
   }
+
+  if (pos > -1)
+    showExtra(pos);
+  else
+    for (unsigned int i = 0; i <= extras.size() - 1; i++)
+      showExtra(i);
 }
 
 void showAll() {
@@ -478,15 +481,16 @@ void showAll() {
   showExtras();
 
   sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
-  // sprintf(txt2, "%02d", day(timeNow));
   sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
-  // sprintf(txt2, "%02d", day(timeNow));
+  // sprintf(txt2, "%s %02d.%02d", extras.size() > 0 ? extras[0].c_str() : "", day(timeNow), month(timeNow));
+
   Serial.println(txt);
   Serial.println(txt2);
+
   int wdL = stringWidth(txt, dig5x8rn, ' ');
   int wdR = stringWidth(txt2, small3x7, ' ');
   int wd = NUM_MAX * 8 - wdL - wdR - 1;
-  printStringWithShift("  ", scrollDelay, font, ' ');
+
   printStringWithShift(txt, scrollDelay, dig5x8rn, ' '); // time
   while (wd-- > 0)
     printCharWithShift('_', scrollDelay, font, ' ');
