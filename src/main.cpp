@@ -564,6 +564,8 @@ void sendState() {
   JsonObject &root = jsonBuffer.createObject();
 
   root["state"] = (stateOn) ? on_cmd : off_cmd;
+  root["speed"] = scrollDelay;
+  root["timeOffset"] = timeOffset;
 
   if (hass_states != "") {
     Serial.print("hass_states: ");
