@@ -26,8 +26,8 @@ ESP8266 LED Matrix MQTT Sign
 switch:
   - platform: mqtt
     name: "Matrix Clock"
-    command_topic: "switch/matrix001/set"
-    state_topic: "switch/matrix001"
+    command_topic: "display/matrix001/set"
+    state_topic: "display/matrix001"
     payload_on: '{ "state": "ON" }'
     payload_off: '{ "state": "OFF" }'
     qos: 1
