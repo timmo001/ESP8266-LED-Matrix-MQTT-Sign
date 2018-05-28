@@ -535,7 +535,6 @@ bool processJson(char *message) {
     timeOffset = root["timeOffset"];
     configureTime();
     updateTime();
-    showAll();
   }
 
   if (root.containsKey("states")) {
@@ -594,6 +593,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     return;
 
   sendState();
+  showAll();  
 }
 
 void reconnect() {
