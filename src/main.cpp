@@ -519,7 +519,7 @@ bool processJson(char *message) {
     hass_states = buffer;
   }
 
-  if (root.containsKey("speed") || root.containsKey("timezone"))
+  if (root.containsKey("timezone") || root.containsKey("daylightOffset"))
     configureTime();
 
   return true;
