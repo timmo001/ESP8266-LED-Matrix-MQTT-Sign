@@ -31,8 +31,7 @@ ESP8266 LED Matrix MQTT Sign
 {
    "state": "ON",
    "speed": 40,
-   "timezone": 1,
-   "daylightOffset": 0,
+   "timeOffset": 1,
    "states": [
       {
          "state": "sensor.dht22_01_temperature",
