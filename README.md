@@ -23,13 +23,11 @@ ESP8266 LED Matrix MQTT Sign
 ## Example Home Assistant Configuration
 
 ```yaml
-switch:
-  - platform: mqtt
+light:
+  - platform: mqtt_json
     name: "Matrix Clock"
-    command_topic: "display/matrix001/set"
     state_topic: "display/matrix001"
-    payload_on: '{ "state": "ON" }'
-    payload_off: '{ "state": "OFF" }'
+    command_topic: "display/matrix001/set"
     qos: 1
 
 input_number:
