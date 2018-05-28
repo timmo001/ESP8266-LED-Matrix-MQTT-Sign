@@ -27,7 +27,7 @@ vector<string> extras;
 String buf = "";
 long lastMsg = 0, lastMin = 100;
 int cnt = 0;
-bool stateOn = true;
+bool stateOn = true, statesChanged = false;
 
 time_t timeNow;
 
@@ -548,6 +548,7 @@ bool processJson(char *message) {
     states.printTo(buffer, sizeof(buffer));
 
     hass_states = buffer;
+    statesChanged = true;
   }
   return true;
 }
@@ -574,8 +575,11 @@ void sendState() {
   Serial.println(buffer);
   client.publish(mqtt_state_topic, buffer, true);
 
-  showAll();  
-  updateExtras();
+  if (statesChanged) {
+    updateExtras();
+    statesChanged = false;
+  }
+  showAll();
 }
 
 // **************************************** MQTT CALLBACK ****************************************
