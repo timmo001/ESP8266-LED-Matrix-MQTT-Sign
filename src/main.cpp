@@ -500,12 +500,10 @@ bool processJson(char *message) {
 
   if (root.containsKey("timezone")) {
     timezone = root["timezone"];
-    configureTime();
   }
 
   if (root.containsKey("daylightOffset")) {
     daylightOffset = root["daylightOffset"];
-    configureTime();
   }
 
   if (root.containsKey("states")) {
@@ -520,6 +518,9 @@ bool processJson(char *message) {
 
     hass_states = buffer;
   }
+
+  if (root.containsKey("speed") || root.containsKey("timezone"))
+    configureTime();
 
   return true;
 }
