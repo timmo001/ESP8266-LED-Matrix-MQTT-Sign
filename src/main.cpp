@@ -400,25 +400,18 @@ bool updateExtras() {
     return false;
   }
 
-  Serial.print("States Length: ");
-  Serial.println(arrayLength);
-
   extras.clear();
 
   for (int i = 0; i <= arrayLength - 1; i++) {
     JsonObject &statesObject = states[i];
     const char *state = statesObject["state"];
 
-    Serial.print("State: ");
-    Serial.println(state);
+    // Serial.print("State: ");
+    // Serial.println(state);
 
     char hostCmd[50], requestCmd[200];
     sprintf(hostCmd, "Host: %s", hass_host);
     sprintf(requestCmd, "GET /api/states/%s?api_password=%s HTTP/1.1", state, hass_api_password);
-
-    Serial.println(hostCmd);
-    Serial.print("Request: ");
-    Serial.println(requestCmd);
 
     wifiClientSecure.println(requestCmd);
     wifiClientSecure.println(hostCmd);
@@ -450,16 +443,8 @@ bool updateExtras() {
       }
       Serial.println("Parsed root");
 
-      char rootChar[root.measureLength() + 1];
-      root.printTo(rootChar, sizeof(rootChar));
-      Serial.print("root: ");
-      Serial.println(rootChar);
-
       const char *state = root["state"];
       string extra = state;
-
-      Serial.print("Extra: ");
-      Serial.println(extra.c_str());
 
       // Add measurement to extra
       if (statesObject.containsKey("measurement")) {
