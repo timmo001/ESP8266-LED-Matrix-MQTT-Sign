@@ -27,6 +27,7 @@ ESP8266 LED Matrix MQTT Sign
 
 ## Sample MQTT Payload
 
+### Switch on with speed of 40, BST and a HASS temperature sensor
 ```json
 {
    "state": "ON",
@@ -38,5 +39,12 @@ ESP8266 LED Matrix MQTT Sign
          "measurement": "C"
       }
    ]
+}
+```
+
+### Switch Off
+```json
+{
+   "state": "OFF"
 }
 ```
