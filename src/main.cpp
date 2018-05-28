@@ -351,7 +351,7 @@ String findSub(String token, String subToken) {
 
 void configureTime() {
   Serial.println("");
-  configTime(timezone * 3600, daylightOffset * 3600, "pool.ntp.org", "time.nist.gov");
+  configTime(timeOffset * 3600, 0, "pool.ntp.org", "time.nist.gov");
   Serial.print("\nWaiting for time");
   while (!time(nullptr)) {
     Serial.print(".");
@@ -498,12 +498,9 @@ bool processJson(char *message) {
     scrollDelay = root["speed"];
   }
 
-  if (root.containsKey("timezone")) {
-    timezone = root["timezone"];
-  }
-
-  if (root.containsKey("daylightOffset")) {
-    daylightOffset = root["daylightOffset"];
+  if (root.containsKey("timeOffset")) {
+    timeOffset = root["timeOffset"];
+    configureTime();
   }
 
   if (root.containsKey("states")) {
@@ -518,10 +515,6 @@ bool processJson(char *message) {
 
     hass_states = buffer;
   }
-
-  if (root.containsKey("timezone") || root.containsKey("daylightOffset"))
-    configureTime();
-
   return true;
 }
 

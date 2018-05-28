@@ -27,8 +27,7 @@ const char *hass_api_password = "pass"; // HASS Password
 
 const long utcOffset = 1;
 
-int timezone = 1; // TZ: Europe/London
-int daylightOffset = 0; // Daylight savings time. Offset in hours
+int timeOffset = 1; // Time offset in hours from GMT. Can be changed in MQTT JSON
 
 unsigned long delayTime = 10000;
 int scrollDelay = 40;
