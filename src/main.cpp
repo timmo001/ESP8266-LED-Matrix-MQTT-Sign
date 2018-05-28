@@ -472,6 +472,39 @@ void showExtras(int pos = -1) {
   }
 }
 
+void showAll() {
+  Serial.println("showAll()");
+
+  showExtras();
+
+  sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
+  // sprintf(txt2, "%02d", day(timeNow));
+  sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
+  // sprintf(txt2, "%02d", day(timeNow));
+  Serial.println(txt);
+  Serial.println(txt2);
+  int wdL = stringWidth(txt, dig5x8rn, ' ');
+  int wdR = stringWidth(txt2, small3x7, ' ');
+  int wd = NUM_MAX * 8 - wdL - wdR - 1;
+  printStringWithShift("  ", scrollDelay, font, ' ');
+  printStringWithShift(txt, scrollDelay, dig5x8rn, ' '); // time
+  while (wd-- > 0)
+    printCharWithShift('_', scrollDelay, font, ' ');
+  printStringWithShift(txt2, scrollDelay, small3x7, ' '); // date
+}
+
+void displayAll() {
+  updateTime();
+  if (minute(timeNow) != lastMin) {
+    sendCmdAll(CMD_INTENSITY, (hour(timeNow) >= 7 && hour(timeNow) <= 16) ? 1 : 0);
+    Serial.println("");
+    lastMin = minute(timeNow);
+    showAll();
+  }
+  if (second(timeNow) == 10)
+    updateExtras();
+}
+
 bool processJson(char *message) {
   Serial.print("Message: ");
   Serial.println(message);
@@ -501,6 +534,8 @@ bool processJson(char *message) {
   if (root.containsKey("timeOffset")) {
     timeOffset = root["timeOffset"];
     configureTime();
+    updateTime();
+    showAll();
   }
 
   if (root.containsKey("states")) {
@@ -579,39 +614,6 @@ void reconnect() {
       delay(5000);
     }
   }
-}
-
-void showAll() {
-  Serial.println("showAll()");
-
-  showExtras();
-
-  sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
-  // sprintf(txt2, "%02d", day(timeNow));
-  sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
-  // sprintf(txt2, "%02d", day(timeNow));
-  Serial.println(txt);
-  Serial.println(txt2);
-  int wdL = stringWidth(txt, dig5x8rn, ' ');
-  int wdR = stringWidth(txt2, small3x7, ' ');
-  int wd = NUM_MAX * 8 - wdL - wdR - 1;
-  printStringWithShift("  ", scrollDelay, font, ' ');
-  printStringWithShift(txt, scrollDelay, dig5x8rn, ' '); // time
-  while (wd-- > 0)
-    printCharWithShift('_', scrollDelay, font, ' ');
-  printStringWithShift(txt2, scrollDelay, small3x7, ' '); // date
-}
-
-void displayAll() {
-  updateTime();
-  if (minute(timeNow) != lastMin) {
-    sendCmdAll(CMD_INTENSITY, (hour(timeNow) >= 7 && hour(timeNow) <= 16) ? 1 : 0);
-    Serial.println("");
-    lastMin = minute(timeNow);
-    showAll();
-  }
-  if (second(timeNow) == 10)
-    updateExtras();
 }
 
 // **************************************** SETUP ****************************************
