@@ -27,7 +27,8 @@ const char *hass_api_password = "pass"; // HASS Password
 
 const long utcOffset = 1;
 
-const int timezone = 1; // TZ: Europe/London
+int timezone = 1; // TZ: Europe/London
+int daylightOffset = 0; // Daylight savings time. Offset in hours
 
 unsigned long delayTime = 10000;
 int scrollDelay = 40;

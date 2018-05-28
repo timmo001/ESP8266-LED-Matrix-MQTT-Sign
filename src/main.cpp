@@ -1,5 +1,7 @@
 using namespace std;
 
+#define MQTT_MAX_PACKET_SIZE 512
+
 // **************************************** INCLUDES ****************************************
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
@@ -16,10 +18,6 @@ using namespace std;
 #include "fonts.h"
 
 // **************************************** GLOBALS ****************************************
-// #define LAST_DISP 2
-// const int BUFFER_SIZE = JSON_OBJECT_SIZE(10);
-#define MQTT_MAX_PACKET_SIZE 512
-
 const int del = 3000, value = 0;
 const char *monthNames[] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"},
            *on_cmd = "ON", *off_cmd = "OFF";
@@ -351,33 +349,23 @@ String findSub(String token, String subToken) {
   return buf.substring(strS2, strE);
 }
 
+void configureTime() {
+  Serial.println("");
+  configTime(timezone * 3600, daylightOffset * 3600, "pool.ntp.org", "time.nist.gov");
+  Serial.print("\nWaiting for time");
+  while (!time(nullptr)) {
+    Serial.print(".");
+    delay(1000);
+  }
+  Serial.println("");
+}
+
 // **************************************** TIME ****************************************
 void updateTime() {
   // Serial.println("updateTime()");
   timeNow = time(nullptr);
   // Serial.print(ctime(&timeNow));
-  sendCmdAll(CMD_INTENSITY, (hour(timeNow) >= 7 && hour(timeNow) <= 16) ? 1 : 0);
 }
-
-// void showTimeDate() {
-//   updateTime();
-//   Serial.println("showTimeDate()");
-//   sprintf(txt, "%02d:%02d", hour(timeNow), minute(timeNow));
-//   // sprintf(txt2, "%d%s%s", day(timeNow), (day(timeNow) > 19) ? "" : "&", monthNames[month(timeNow) - 1]);
-//   // sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
-//   sprintf(txt2, "%02d.%02d", day(timeNow), month(timeNow));
-//   Serial.println(txt);
-//   Serial.println(txt2);
-//   int wd1 = stringWidth(txt, dig5x8rn, ' ');
-//   int wd2 = stringWidth(txt2, small3x7, ' ');
-//   int wd = NUM_MAX * 8 - wd1 - wd2 - 1;
-//   printStringWithShift("  ", scrollDelay, font, ' ');
-//   printStringWithShift(txt, scrollDelay, dig5x8rn, ' '); // time
-//   while (wd-- > 0)
-//     printCharWithShift('_', scrollDelay, font, ' ');
-//   printStringWithShift(txt2, scrollDelay, small3x7, ' '); // date
-//   delay(delayTime);
-// }
 
 // **************************************** EXTRAS ****************************************
 bool updateExtras() {
@@ -388,7 +376,7 @@ bool updateExtras() {
     return false;
   }
 
-  const size_t bufferSize = JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(5) + 240;
+  const size_t bufferSize = JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(5) + 120;
   DynamicJsonBuffer jsonBuffer(bufferSize);
 
   JsonArray &states = jsonBuffer.parseArray(hass_states);
@@ -405,9 +393,6 @@ bool updateExtras() {
   for (int i = 0; i <= arrayLength - 1; i++) {
     JsonObject &statesObject = states[i];
     const char *state = statesObject["state"];
-
-    // Serial.print("State: ");
-    // Serial.println(state);
 
     char hostCmd[50], requestCmd[200];
     sprintf(hostCmd, "Host: %s", hass_host);
@@ -491,7 +476,7 @@ bool processJson(char *message) {
   Serial.print("Message: ");
   Serial.println(message);
 
-  const size_t bufferSize = JSON_ARRAY_SIZE(1) + 2 * JSON_OBJECT_SIZE(2) + 80;
+  const size_t bufferSize = JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(5) + 120;
   DynamicJsonBuffer jsonBuffer(bufferSize);
 
   JsonObject &root = jsonBuffer.parseObject(message);
@@ -513,6 +498,16 @@ bool processJson(char *message) {
     scrollDelay = root["speed"];
   }
 
+  if (root.containsKey("timezone")) {
+    timezone = root["timezone"];
+    configureTime();
+  }
+
+  if (root.containsKey("daylightOffset")) {
+    daylightOffset = root["daylightOffset"];
+    configureTime();
+  }
+
   if (root.containsKey("states")) {
     JsonArray &states = root["states"];
 
@@ -529,8 +524,8 @@ bool processJson(char *message) {
   return true;
 }
 
-void sendState(char *topic) {
-  const size_t bufferSize = JSON_ARRAY_SIZE(1) + 2 * JSON_OBJECT_SIZE(2) + 80;
+void sendState() {
+  const size_t bufferSize = JSON_ARRAY_SIZE(1) + JSON_OBJECT_SIZE(2) + JSON_OBJECT_SIZE(5) + 120;
   DynamicJsonBuffer jsonBuffer(bufferSize);
 
   JsonObject &root = jsonBuffer.createObject();
@@ -569,7 +564,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
   if (!processJson(message))
     return;
 
-  sendState(topic);
+  sendState();
 }
 
 void reconnect() {
@@ -591,31 +586,6 @@ void reconnect() {
     }
   }
 }
-
-// void displayScrollingExtras() {
-//   Serial.println("");
-//   Serial.print("Count = ");
-//   Serial.println(cnt);
-//   // Serial.println("");
-
-//   switch (cnt) {
-//   case 0:
-//     showTimeDate();
-//     delay(delayTime);
-//     break;
-//   default:
-//     updateExtras();
-//     showExtras(cnt);
-//     break;
-//   }
-
-//   cnt++;
-//   if (cnt > LAST_DISP)
-//     cnt = 0;
-//   // delTime = millis() - startTime;
-//   // if (delTime < 20000) delay(20000 - delTime);
-//   // delay(delayTime);
-// }
 
 void showAll() {
   Serial.println("showAll()");
@@ -641,6 +611,7 @@ void showAll() {
 void displayAll() {
   updateTime();
   if (minute(timeNow) != lastMin) {
+    sendCmdAll(CMD_INTENSITY, (hour(timeNow) >= 7 && hour(timeNow) <= 16) ? 1 : 0);
     Serial.println("");
     lastMin = minute(timeNow);
     showAll();
@@ -702,14 +673,7 @@ void setup() {
   sendCmdAll(CMD_INTENSITY, 0);
   printStringWithShift((String("My IP: ") + WiFi.localIP().toString()).c_str(), scrollDelay, font, ' ');
 
-  Serial.println("");
-  configTime(timezone * 3600, 0, "pool.ntp.org", "time.nist.gov");
-  Serial.print("\nWaiting for time");
-  while (!time(nullptr)) {
-    Serial.print(".");
-    delay(1000);
-  }
-  Serial.println("");
+  configureTime();
 }
 
 // **************************************** MAIN LOOP ****************************************
@@ -718,19 +682,12 @@ void loop() {
     reconnect();
   } else {
     client.loop();
-    // sendState();
-
     ArduinoOTA.handle();
 
-    if (stateOn) {
-      // if (NUM_MAX < 8) {
-      //   displayScrollingExtras();
-      // } else {
+    if (stateOn)
       displayAll();
-      // }
-    } else {
+    else
       printStringWithShift("                                                                ", scrollDelay, font, ' ');
-    }
   }
   delay(1000);
 }
