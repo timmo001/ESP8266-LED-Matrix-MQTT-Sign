@@ -574,6 +574,7 @@ void sendState() {
   Serial.println(buffer);
   client.publish(mqtt_state_topic, buffer, true);
 
+  showAll();  
   updateExtras();
 }
 
@@ -593,7 +594,6 @@ void callback(char *topic, byte *payload, unsigned int length) {
     return;
 
   sendState();
-  showAll();  
 }
 
 void reconnect() {
