@@ -3,9 +3,10 @@ using namespace std;
 #define NUM_MAX 8 // Amount of 8x8 displays avaliable
 #define ROTATE 90
 
-#define CLK_PIN 12 // D6
-#define CS_PIN 13  // D7
-#define DIN_PIN 15 // D8
+#define CLK_PIN 12    // D6
+#define CS_PIN 13     // D7
+#define DIN_PIN 15    // D8
+// #define BUTTON_PIN 14 // D5 - Comment to disable
 
 #define mqtt_state_topic "display/matrix001"
 #define mqtt_set_topic "display/matrix001/set"
