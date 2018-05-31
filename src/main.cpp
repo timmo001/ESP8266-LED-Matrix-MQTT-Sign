@@ -354,7 +354,7 @@ void configureTime() {
   Serial.print("\nWaiting for time");
   while (!time(nullptr)) {
     Serial.print(".");
-    delay(1000);
+    delay(500);
   }
   Serial.println("");
 }
@@ -626,6 +626,31 @@ void reconnect() {
   }
 }
 
+#ifdef BUTTON_PIN
+int buttonState = LOW;
+
+void configureButton() {
+  pinMode(BUTTON_PIN, INPUT);
+}
+
+void checkButton() {
+  int state = digitalRead(BUTTON_PIN);
+  if (state != buttonState) {
+    buttonState = state;
+    Serial.print("Button Changed: ");
+    Serial.println(buttonState);
+    if (buttonState == (HIGH)) {
+      Serial.println("Button Pressed");
+      stateOn = !stateOn;
+      sendState();
+    }
+  }
+}
+#else
+void configureButton() {}
+void checkButton() {}
+#endif
+
 // **************************************** SETUP ****************************************
 void setup() {
   buf.reserve(500);
@@ -680,6 +705,7 @@ void setup() {
   printStringWithShift((String("My IP: ") + WiFi.localIP().toString()).c_str(), scrollDelay, font, ' ');
 
   configureTime();
+  configureButton();
 }
 
 // **************************************** MAIN LOOP ****************************************
@@ -690,10 +716,12 @@ void loop() {
     client.loop();
     ArduinoOTA.handle();
 
+    checkButton();
+
     if (stateOn)
       displayAll();
     else
       printStringWithShift("                                                                ", scrollDelay, font, ' ');
   }
-  delay(1000);
+  delay(10);
 }
